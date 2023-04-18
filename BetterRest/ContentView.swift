@@ -11,54 +11,9 @@ import SwiftUI
 struct ContentView: View {
     @State private var wakeUp = defaultWakeTime
     @State private var sleepAmount = 8.0
-    @State private var coffeeAmount = 1
+    @State private var coffeeAmount = 0
     
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
-    @State private var showingAlert = false
-    
-    static var defaultWakeTime: Date {
-        var components = DateComponents()
-        components.hour = 7
-        components.minute = 0
-        return Calendar.current.date(from: components) ?? Date.now
-    }
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("When do you want to wake up?")
-                        .font(.headline)
-                    DatePicker("Please enter a time", selection: $wakeUp, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                }
-                
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Desired amount of sleep")
-                        .font(.headline)
-                    Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25)
-                }
-                
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Daily coffee intake")
-                        .font(.headline)
-                    Stepper(coffeeAmount == 1 ? "1 cup" : "\(coffeeAmount) cups", value: $coffeeAmount, in: 1...20)
-                }
-            }
-            .navigationTitle("BetterRest")
-            .toolbar {
-                Button("Calculate", action: calculateBedTime)
-            }
-            .alert(alertTitle, isPresented: $showingAlert) {
-                Button("Ok") {  }
-            } message: {
-                Text(alertMessage)
-            }
-        }
-    }
-    
-    func calculateBedTime() {
+    private var bedtimeResult: String {
         do {
             let config = MLModelConfiguration()
             let model = try SleepCalculator(configuration: config)
@@ -74,17 +29,60 @@ struct ContentView: View {
             )
             
             let sleepTime = wakeUp - prediction.actualSleep
-            alertTitle = "Your ideal bedtime is..."
-            alertMessage = sleepTime.formatted(date: .omitted, time: .shortened)
+            
+            return sleepTime.formatted(date: .omitted, time: .shortened)
         }
         catch {
-            alertTitle = "Error"
-            alertMessage = "Sorry, there was a problem calculating your bedtime."
+            return "Sorry, there was a problem calculating your bedtime."
         }
-        
-        showingAlert = true
     }
     
+    static var defaultWakeTime: Date {
+        var components = DateComponents()
+        components.hour = 7
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date.now
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                VStack(alignment: .center, spacing: 0) {
+                    Text("When do you want to wake up?")
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                    DatePicker("Please enter a time", selection: $wakeUp, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                
+                Section("Desired amount of sleep") {
+                    Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25)
+                }
+                
+                Section("Daily coffee intake") {
+                    Picker("Number of coffee cups", selection: $coffeeAmount) {
+                        ForEach(0..<21) { coffeeCups in
+                            Text(String(coffeeCups))
+                        }
+                    }
+                }
+                
+                VStack(alignment: .center, spacing: 0) {
+                    Text("Recommended bedtime")
+                        .font(.title3)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom)
+                    Text(bedtimeResult)
+                        .font(.largeTitle.bold())
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+            }
+            .navigationTitle("BetterRest")
+        }
+    }
 }
 
 struct ContentView_Previews: PreviewProvider {
